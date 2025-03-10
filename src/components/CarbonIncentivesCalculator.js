@@ -2,36 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
-// Add to the top of the component
-useEffect(() => {
-  const savedInputs = localStorage.getItem('carbonCalculatorInputs');
-  if (savedInputs) {
-    setInputs(JSON.parse(savedInputs));
-  }
-}, []);
-
-// Add this effect to save inputs when they change
-useEffect(() => {
-  localStorage.setItem('carbonCalculatorInputs', JSON.stringify(inputs));
-}, [inputs]);
-
-const exportResults = () => {
-  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(results, null, 2));
-  const downloadAnchorNode = document.createElement('a');
-  downloadAnchorNode.setAttribute("href", dataStr);
-  downloadAnchorNode.setAttribute("download", "carbon_reduction_results.json");
-  document.body.appendChild(downloadAnchorNode);
-  downloadAnchorNode.click();
-  downloadAnchorNode.remove();
-};
-
-// Then add a button in your UI
-<button 
-  className="px-4 py-2 bg-green-600 text-white rounded"
-  onClick={exportResults}
->
-  Export Results
-</button>
 
 const CarbonIncentivesCalculator = () => {
   // Constants for calculations
@@ -84,6 +54,38 @@ const CarbonIncentivesCalculator = () => {
     bundleDiscount: 10, // % discount when installing both technologies
     viewMode: 'consumer' // 'consumer' or 'program' view
   });
+
+  // Add to the top of the component
+useEffect(() => {
+  const savedInputs = localStorage.getItem('carbonCalculatorInputs');
+  if (savedInputs) {
+    setInputs(JSON.parse(savedInputs));
+  }
+}, []);
+
+// Add this effect to save inputs when they change
+useEffect(() => {
+  localStorage.setItem('carbonCalculatorInputs', JSON.stringify(inputs));
+}, [inputs]);
+
+const exportResults = () => {
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(results, null, 2));
+  const downloadAnchorNode = document.createElement('a');
+  downloadAnchorNode.setAttribute("href", dataStr);
+  downloadAnchorNode.setAttribute("download", "carbon_reduction_results.json");
+  document.body.appendChild(downloadAnchorNode);
+  downloadAnchorNode.click();
+  downloadAnchorNode.remove();
+};
+
+// Then add a button in your UI
+<button 
+  className="px-4 py-2 bg-green-600 text-white rounded"
+  onClick={exportResults}
+>
+  Export Results
+</button>
+
 
   const [results, setResults] = useState({
     spaceHeating: {
