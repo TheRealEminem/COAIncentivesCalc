@@ -671,147 +671,114 @@ const CarbonIncentivesCalculator = () => {
   );
 
   // Sensitivity analysis component
-  const SensitivityAnalysis = () => {
-    const [parameter, setParameter] = useState('gasRate');
-    const [technology, setTechnology] = useState('spaceHeating');
-    const [range, setRange] = useState(50); // percentage +/-
+ // Sensitivity analysis component
+ const SensitivityAnalysis = () => {
+  const [parameter, setParameter] = useState('gasRate');
+  const [technology, setTechnology] = useState('spaceHeating');
+  const [range, setRange] = useState(50); // percentage +/-
+  
+  // Generate data points for sensitivity analysis
+  const generateSensitivityData = () => {
+    const currentValue = inputs[technology][parameter];
+    const parameterLabel = getParameterLabel(parameter);
+    const data = [];
     
-    // Generate data points for sensitivity analysis
-    const generateSensitivityData = () => {
-      const currentValue = inputs[technology][parameter];
-      const parameterLabel = getParameterLabel(parameter);
-      const data = [];
+    // Generate 9 data points centered around current value
+    for (let i = -range; i <= range; i += (range/4)) {
+      // Calculate new value based on percentage change
+      const newValue = currentValue * (1 + (i / 100));
       
-      // Generate 9 data points centered around current value
-      for (let i = -range; i <= range; i += (range/4)) {
-        // Calculate new value based on percentage change
-        const newValue = currentValue * (1 + (i / 100));
-        
-        // Create a copy of inputs with this parameter changed
-        const newInputs = { ...inputs };
-        newInputs[technology][parameter] = newValue;
-        
-        // Calculate results with this new value
-        const results = calculateResults(technology, newInputs[technology]);
-        
-        data.push({
-          changePercent: i,
-          parameterValue: newValue,
-          paybackYears: results.simplePaybackYears,
-          annualEmissions: results.netEmissionsReduction,
-          npv: results.netPresentValue
-        });
-      }
+      // Create a copy of inputs with this parameter changed
+      const newInputs = { ...inputs };
+      newInputs[technology][parameter] = newValue;
       
-      return { data, parameterLabel };
-    };
-    
-    const { data, parameterLabel } = generateSensitivityData();
-    
-    // Helper function to get user-friendly label
-    function getParameterLabel(param) {
-      const labels = {
-        'gasRate': 'Gas Rate ($/therm)',
-        'electricityRate': 'Electricity Rate ($/kWh)',
-        'heatPumpCOP': 'Heat Pump COP',
-        'heatPumpWaterHeaterEF': 'HPWH Efficiency Factor',
-        'gasHeaterCost': 'Gas Furnace Cost',
-        'heatPumpCost': 'Heat Pump Cost',
-        'currentIncentive': 'Incentive Amount'
-      };
-      return labels[param] || param;
+      // Calculate results with this new value
+      const results = calculateResults(technology, newInputs[technology]);
+      
+      data.push({
+        changePercent: i,
+        parameterValue: newValue,
+        paybackYears: results.simplePaybackYears,
+        annualEmissions: results.netEmissionsReduction,
+        npv: results.netPresentValue
+      });
     }
     
-    return (
-      <div className="space-y-6">
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-3">Sensitivity Analysis</h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Analyze how changes in key parameters affect outcomes.
-          </p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Technology</label>
-              <select 
-                value={technology} 
-                onChange={(e) => setTechnology(e.target.value)}
-                className="w-full p-2 border rounded"
-              >
-                <option value="spaceHeating">Space Heating</option>
-                <option value="waterHeating">Water Heating</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Parameter</label>
-              <select 
-                value={parameter} 
-                onChange={(e) => setParameter(e.target.value)}
-                className="w-full p-2 border rounded"
-              >
-                <option value="gasRate">Gas Rate</option>
-                <option value="electricityRate">Electricity Rate</option>
-                {technology === 'spaceHeating' ? (
-                  <option value="heatPumpCOP">Heat Pump COP</option>
-                ) : (
-                  <option value="heatPumpWaterHeaterEF">Water Heater Efficiency</option>
-                )}
-                <option value="currentIncentive">Incentive Amount</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Range (±%)</label>
-              <input
-                type="range"
-                min={10}
-                max={100}
-                step={5}
-                value={range}
-                onChange={(e) => setRange(parseInt(e.target.value))}
-                className="w-full"
-              />
-              <div className="text-center text-sm">±{range}%</div>
-            </div>
+    return { data, parameterLabel };
+  };
+  
+  const { data, parameterLabel } = generateSensitivityData();
+  
+  // Helper function to get user-friendly label
+  function getParameterLabel(param) {
+    const labels = {
+      'gasRate': 'Gas Rate ($/therm)',
+      'electricityRate': 'Electricity Rate ($/kWh)',
+      'heatPumpCOP': 'Heat Pump COP',
+      'heatPumpWaterHeaterEF': 'HPWH Efficiency Factor',
+      'gasHeaterCost': 'Gas Furnace Cost',
+      'heatPumpCost': 'Heat Pump Cost',
+      'currentIncentive': 'Incentive Amount'
+    };
+    return labels[param] || param;
+  }
+  
+  return (
+    <div className="space-y-6">
+      <div className="bg-white p-4 rounded-lg shadow">
+        <h3 className="text-lg font-semibold mb-3">Sensitivity Analysis</h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Analyze how changes in key parameters affect outcomes.
+        </p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Technology</label>
+            <select 
+              value={technology} 
+              onChange={(e) => setTechnology(e.target.value)}
+              className="w-full p-2 border rounded"
+            >
+              <option value="spaceHeating">Space Heating</option>
+              <option value="waterHeating">Water Heating</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Parameter</label>
+            <select 
+              value={parameter} 
+              onChange={(e) => setParameter(e.target.value)}
+              className="w-full p-2 border rounded"
+            >
+              <option value="gasRate">Gas Rate</option>
+              <option value="electricityRate">Electricity Rate</option>
+              {technology === 'spaceHeating' ? (
+                <option value="heatPumpCOP">Heat Pump COP</option>
+              ) : (
+                <option value="heatPumpWaterHeaterEF">Water Heater Efficiency</option>
+              )}
+              <option value="currentIncentive">Incentive Amount</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Range (±%)</label>
+            <input
+              type="range"
+              min={10}
+              max={100}
+              step={5}
+              value={range}
+              onChange={(e) => setRange(parseInt(e.target.value))}
+              className="w-full"
+            />
+            <div className="text-center text-sm">±{range}%</div>
           </div>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white p-4 rounded-lg shadow">
-            <h4 className="font-medium text-sm mb-2">Impact on Payback Period</h4>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                  data={data}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="changePercent" 
-                    label={{ value: `% Change in ${parameterLabel}`, position: 'insideBottom', offset: -5 }}
-                  />
-                  <YAxis 
-                    label={{ value: 'Annual Emissions Reduction (MTCO2e)', angle: -90, position: 'insideLeft' }}
-                  />
-                  <Tooltip 
-                    formatter={(value) => [`${formatNumber(value, 2)} MTCO2e`, 'Emissions Reduction']}
-                    labelFormatter={(value) => `${value}% change in ${parameterLabel}`}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="annualEmissions"
-                    stroke="#10B981"
-                    strokeWidth={2}
-                    dot={{ r: 4 }}
-                  />
-                  <ReferenceLine x={0} stroke="#666" strokeDasharray="3 3" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-        
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white p-4 rounded-lg shadow">
-          <h4 className="font-medium text-sm mb-2">Impact on Net Present Value</h4>
+          <h4 className="font-medium text-sm mb-2">Impact on Payback Period</h4>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
@@ -824,59 +791,93 @@ const CarbonIncentivesCalculator = () => {
                   label={{ value: `% Change in ${parameterLabel}`, position: 'insideBottom', offset: -5 }}
                 />
                 <YAxis 
-                  label={{ value: 'Net Present Value ($)', angle: -90, position: 'insideLeft' }}
-                  tickFormatter={(value) => `${value.toLocaleString()}`}
+                  label={{ value: 'Payback Period (Years)', angle: -90, position: 'insideLeft' }}
                 />
                 <Tooltip 
-                  formatter={(value) => [formatCurrency(value), 'Net Present Value']}
+                  formatter={(value) => [`${formatNumber(value, 1)} years`, 'Payback Period']}
                   labelFormatter={(value) => `${value}% change in ${parameterLabel}`}
                 />
                 <Line
                   type="monotone"
-                  dataKey="npv"
-                  stroke="#F97316"
+                  dataKey="paybackYears"
+                  stroke="#2563EB"
                   strokeWidth={2}
                   dot={{ r: 4 }}
                 />
-                <ReferenceLine y={0} stroke="#666" strokeDasharray="3 3" />
+                <ReferenceLine x={0} stroke="#666" strokeDasharray="3 3" />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h4 className="font-medium text-sm mb-2">Impact on Emissions Reduction</h4>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={data}
+                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="changePercent" 
+                  label={{ value: `% Change in ${parameterLabel}`, position: 'insideBottom', offset: -5 }}
+                />
+                <YAxis 
+                  label={{ value: 'Annual Emissions Reduction (MTCO2e)', angle: -90, position: 'insideLeft' }}
+                />
+                <Tooltip 
+                  formatter={(value) => [`${formatNumber(value, 2)} MTCO2e`, 'Emissions Reduction']}
+                  labelFormatter={(value) => `${value}% change in ${parameterLabel}`}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="annualEmissions"
+                  stroke="#10B981"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                />
                 <ReferenceLine x={0} stroke="#666" strokeDasharray="3 3" />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
       </div>
-    );
-  };: 5, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="changePercent" 
-                    label={{ value: `% Change in ${parameterLabel}`, position: 'insideBottom', offset: -5 }}
-                  />
-                  <YAxis 
-                    label={{ value: 'Payback Period (Years)', angle: -90, position: 'insideLeft' }}
-                  />
-                  <Tooltip 
-                    formatter={(value) => [`${formatNumber(value, 1)} years`, 'Payback Period']}
-                    labelFormatter={(value) => `${value}% change in ${parameterLabel}`}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="paybackYears"
-                    stroke="#2563EB"
-                    strokeWidth={2}
-                    dot={{ r: 4 }}
-                  />
-                  <ReferenceLine x={0} stroke="#666" strokeDasharray="3 3" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-          
-          <div className="bg-white p-4 rounded-lg shadow">
-            <h4 className="font-medium text-sm mb-2">Impact on Emissions Reduction</h4>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                  data={data}
-                  margin={{ top
+      
+      <div className="bg-white p-4 rounded-lg shadow">
+        <h4 className="font-medium text-sm mb-2">Impact on Net Present Value</h4>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={data}
+              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="changePercent" 
+                label={{ value: `% Change in ${parameterLabel}`, position: 'insideBottom', offset: -5 }}
+              />
+              <YAxis 
+                label={{ value: 'Net Present Value ($)', angle: -90, position: 'insideLeft' }}
+                tickFormatter={(value) => `$${value.toLocaleString()}`}
+              />
+              <Tooltip 
+                formatter={(value) => [formatCurrency(value), 'Net Present Value']}
+                labelFormatter={(value) => `${value}% change in ${parameterLabel}`}
+              />
+              <Line
+                type="monotone"
+                dataKey="npv"
+                stroke="#F97316"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+              />
+              <ReferenceLine y={0} stroke="#666" strokeDasharray="3 3" />
+              <ReferenceLine x={0} stroke="#666" strokeDasharray="3 3" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </div>
+  );
+};
