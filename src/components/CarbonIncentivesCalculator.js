@@ -55,78 +55,744 @@ const CarbonIncentivesCalculator = () => {
     viewMode: 'consumer' // 'consumer' or 'program' view
   });
 
-  // Add to the top of the component
+// Add these useEffect hooks inside your CarbonIncentivesCalculator component
 useEffect(() => {
   const savedInputs = localStorage.getItem('carbonCalculatorInputs');
   if (savedInputs) {
-    setInputs(JSON.parse(savedInputs));
+    try {
+      setInputs(JSON.parse(savedInputs));
+    } catch (e) {
+      console.error("Error loading saved data:", e);
+    }
   }
 }, []);
 
-// Add this effect to save inputs when they change
 useEffect(() => {
   localStorage.setItem('carbonCalculatorInputs', JSON.stringify(inputs));
 }, [inputs]);
 
-const exportResults = () => {
-  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(results, null, 2));
-  const downloadAnchorNode = document.createElement('a');
-  downloadAnchorNode.setAttribute("href", dataStr);
-  downloadAnchorNode.setAttribute("download", "carbon_reduction_results.json");
-  document.body.appendChild(downloadAnchorNode);
-  downloadAnchorNode.click();
-  downloadAnchorNode.remove();
-};
-
-// Then add a button in your UI
-<button 
-  className="px-4 py-2 bg-green-600 text-white rounded"
-  onClick={exportResults}
->
-  Export Results
-</button>
-
-
-  const [results, setResults] = useState({
+// Add a reset function
+const resetToDefaults = () => {
+  // Define your default values
+  const defaultInputs = {
     spaceHeating: {
-      annualEmissionsGas: 0,
-      annualEmissionsHP: 0,
-      netEmissionsReduction: 0,
-      annualCostGas: 0,
-      annualCostHP: 0,
-      annualSavings: 0,
-      simplePaybackYears: 0,
-      simplePaybackWithIncentive: 0,
-      netPresentValue: 0,
-      optimalIncentives: [0, 0, 0],
-      yearByYearData: [],
-      lifetimeEmissionsReduction: 0
+      gasHeaterCost: 3000,
+      gasInstallationCost: 1000,
+      // ...other default values
     },
     waterHeating: {
-      annualEmissionsGas: 0,
-      annualEmissionsHP: 0,
-      netEmissionsReduction: 0,
-      annualCostGas: 0,
-      annualCostHP: 0,
-      annualSavings: 0,
-      simplePaybackYears: 0,
-      simplePaybackWithIncentive: 0,
-      netPresentValue: 0,
-      optimalIncentives: [0, 0, 0],
-      yearByYearData: [],
-      lifetimeEmissionsReduction: 0
+      // ...default values
     },
-    combined: {
-      bundleDiscount: 0,
-      totalIncentive: 0,
-      netEmissionsReduction: 0,
-      lifetimeEmissionsReduction: 0,
-      costPerMTCO2e: 0,
-      paybackPeriod: 0
-    },
-    comparisonData: [] // For comparing different technologies
-  });
+    bundleDiscount: 10,
+    viewMode: 'consumer'
+  };
+  
+  setInputs(defaultInputs);
+  localStorage.removeItem('carbonCalculatorInputs');
+};
 
+// Then add this button to your UI
+// <button onClick={resetToDefaults} className="px-4 py-2 bg-red-600 text-white rounded">Reset to Defaults</button>
+
+// Then add a button in your UI
+// Add these functions for export capabilities
+const exportToCSV = () => {
+  // Prepare data for CSV export
+  const rows = [
+    ['Category', 'Parameter', 'Value'],
+    ['Space Heating', 'Annual Emissions Reduction', results.spaceHeating.netEmissionsReduction],
+    ['Space Heating', 'Lifecycle Emissions Reduction', results.spaceHeating.lifetimeEmissionsReduction],
+    ['Space Heating', 'Annual Savings', results.spaceHeating.annualSavings],
+    ['Space Heating', 'Payback Period', results.spaceHeating.simplePaybackYears],
+    ['Water Heating', 'Annual Emissions Reduction', results.waterHeating.netEmissionsReduction],
+    ['Water Heating', 'Lifecycle Emissions Reduction', results.waterHeating.lifetimeEmissionsReduction],
+    ['Water Heating', 'Annual Savings', results.waterHeating.annualSavings],
+    ['Water Heating', 'Payback Period', results.waterHeating.simplePaybackYears],
+    ['Combined', 'Annual Emissions Reduction', results.combined.netEmissionsReduction],
+    ['Combined', 'Lifecycle Emissions Reduction', results.combined.lifetimeEmissionsReduction],
+    ['Combined', 'Total Incentive', results.combined.totalIncentive],
+    ['Combined', 'Payback Period', results.combined.paybackPeriod]
+  ];
+  
+  // Convert to CSV format
+  const csvContent = "data:text/csv;charset=utf-8," + 
+    rows.map(row => row.join(',')).join('\n');
+  
+  // Create download link
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", "carbon_reduction_results.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+const exportToJSON = () => {
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
+    inputs: inputs,
+    results: results
+  }, null, 2));
+  const downloadLink = document.createElement("a");
+  downloadLink.setAttribute("href", dataStr);
+  downloadLink.setAttribute("download", "carbon_calculator_data.json");
+  document.body.appendChild(downloadLink);
+  downloadLink.click();
+  document.body.removeChild(downloadLink);
+};
+
+// Add an export button group in your UI
+// <div className="flex gap-2">
+//   <button onClick={exportToCSV} className="px-4 py-2 bg-blue-600 text-white rounded">Export to CSV</button>
+//   <button onClick={exportToJSON} className="px-4 py-2 bg-green-600 text-white rounded">Export to JSON</button>
+// </div>
+
+
+// Sensitivity analysis component
+const SensitivityAnalysis = () => {
+  const [parameter, setParameter] = useState('gasRate');
+  const [technology, setTechnology] = useState('spaceHeating');
+  const [range, setRange] = useState(50); // percentage +/-
+  
+  // Generate data points for sensitivity analysis
+  const generateSensitivityData = () => {
+    const currentValue = inputs[technology][parameter];
+    const parameterLabel = getParameterLabel(parameter);
+    const data = [];
+    
+    // Generate 9 data points centered around current value
+    for (let i = -range; i <= range; i += (range/4)) {
+      // Calculate new value based on percentage change
+      const newValue = currentValue * (1 + (i / 100));
+      
+      // Create a copy of inputs with this parameter changed
+      const newInputs = { ...inputs };
+      newInputs[technology][parameter] = newValue;
+      
+      // Calculate results with this new value
+      const results = calculateResults(technology, newInputs[technology]);
+      
+      data.push({
+        changePercent: i,
+        parameterValue: newValue,
+        paybackYears: results.simplePaybackYears,
+        annualEmissions: results.netEmissionsReduction,
+        npv: results.netPresentValue
+      });
+    }
+    
+    return { data, parameterLabel };
+  };
+  
+  const { data, parameterLabel } = generateSensitivityData();
+  
+  // Helper function to get user-friendly label
+  function getParameterLabel(param) {
+    const labels = {
+      'gasRate': 'Gas Rate ($/therm)',
+      'electricityRate': 'Electricity Rate ($/kWh)',
+      'heatPumpCOP': 'Heat Pump COP',
+      'heatPumpWaterHeaterEF': 'HPWH Efficiency Factor',
+      'gasHeaterCost': 'Gas Furnace Cost',
+      'heatPumpCost': 'Heat Pump Cost',
+      'currentIncentive': 'Incentive Amount'
+    };
+    return labels[param] || param;
+  }
+  
+  return (
+    <div className="space-y-6">
+      <div className="bg-white p-4 rounded-lg shadow">
+        <h3 className="text-lg font-semibold mb-3">Sensitivity Analysis</h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Analyze how changes in key parameters affect outcomes.
+        </p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Technology</label>
+            <select 
+              value={technology} 
+              onChange={(e) => setTechnology(e.target.value)}
+              className="w-full p-2 border rounded"
+            >
+              <option value="spaceHeating">Space Heating</option>
+              <option value="waterHeating">Water Heating</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Parameter</label>
+            <select 
+              value={parameter} 
+              onChange={(e) => setParameter(e.target.value)}
+              className="w-full p-2 border rounded"
+            >
+              <option value="gasRate">Gas Rate</option>
+              <option value="electricityRate">Electricity Rate</option>
+              {technology === 'spaceHeating' ? (
+                <option value="heatPumpCOP">Heat Pump COP</option>
+              ) : (
+                <option value="heatPumpWaterHeaterEF">Water Heater Efficiency</option>
+              )}
+              <option value="currentIncentive">Incentive Amount</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Range (±%)</label>
+            <input
+              type="range"
+              min={10}
+              max={100}
+              step={5}
+              value={range}
+              onChange={(e) => setRange(parseInt(e.target.value))}
+              className="w-full"
+            />
+            <div className="text-center text-sm">±{range}%</div>
+          </div>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h4 className="font-medium text-sm mb-2">Impact on Payback Period</h4>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={data}
+                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="changePercent" 
+                  label={{ value: `% Change in ${parameterLabel}`, position: 'insideBottom', offset: -5 }}
+                />
+                <YAxis 
+                  label={{ value: 'Payback Period (Years)', angle: -90, position: 'insideLeft' }}
+                />
+                <Tooltip 
+                  formatter={(value) => [`${formatNumber(value, 1)} years`, 'Payback Period']}
+                  labelFormatter={(value) => `${value}% change in ${parameterLabel}`}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="paybackYears"
+                  stroke="#2563EB"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                />
+                <ReferenceLine x={0} stroke="#666" strokeDasharray="3 3" />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h4 className="font-medium text-sm mb-2">Impact on Emissions Reduction</h4>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={data}
+                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="changePercent" 
+                  label={{ value: `% Change in ${parameterLabel}`, position: 'insideBottom', offset: -5 }}
+                />
+                <YAxis 
+                  label={{ value: 'Annual Emissions Reduction (MTCO2e)', angle: -90, position: 'insideLeft' }}
+                />
+                <Tooltip 
+                  formatter={(value) => [`${formatNumber(value, 2)} MTCO2e`, 'Emissions Reduction']}
+                  labelFormatter={(value) => `${value}% change in ${parameterLabel}`}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="annualEmissions"
+                  stroke="#10B981"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                />
+                <ReferenceLine x={0} stroke="#666" strokeDasharray="3 3" />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+      
+      <div className="bg-white p-4 rounded-lg shadow">
+        <h4 className="font-medium text-sm mb-2">Impact on Net Present Value</h4>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={data}
+              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="changePercent" 
+                label={{ value: `% Change in ${parameterLabel}`, position: 'insideBottom', offset: -5 }}
+              />
+              <YAxis 
+                label={{ value: 'Net Present Value ($)', angle: -90, position: 'insideLeft' }}
+                tickFormatter={(value) => `$${value.toLocaleString()}`}
+              />
+              <Tooltip 
+                formatter={(value) => [formatCurrency(value), 'Net Present Value']}
+                labelFormatter={(value) => `${value}% change in ${parameterLabel}`}
+              />
+              <Line
+                type="monotone"
+                dataKey="npv"
+                stroke="#F97316"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+              />
+              <ReferenceLine y={0} stroke="#666" strokeDasharray="3 3" />
+              <ReferenceLine x={0} stroke="#666" strokeDasharray="3 3" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+// Add these states to your component
+const [savedScenarios, setSavedScenarios] = useState([]);
+const [scenarioName, setScenarioName] = useState('');
+const [compareScenarios, setCompareScenarios] = useState([]);
+
+// Add these functions for scenario management
+const saveCurrentScenario = () => {
+  if (!scenarioName) {
+    alert("Please enter a name for this scenario");
+    return;
+  }
+  
+  const newScenario = {
+    id: Date.now(),
+    name: scenarioName,
+    inputs: JSON.parse(JSON.stringify(inputs)),
+    results: JSON.parse(JSON.stringify(results))
+  };
+  
+  setSavedScenarios(prev => [...prev, newScenario]);
+  setScenarioName('');
+  
+  // Save to localStorage
+  const allScenarios = [...savedScenarios, newScenario];
+  localStorage.setItem('carbonCalculatorScenarios', JSON.stringify(allScenarios));
+};
+
+const loadScenario = (scenario) => {
+  setInputs(JSON.parse(JSON.stringify(scenario.inputs)));
+};
+
+const deleteScenario = (id) => {
+  const updatedScenarios = savedScenarios.filter(s => s.id !== id);
+  setSavedScenarios(updatedScenarios);
+  localStorage.setItem('carbonCalculatorScenarios', JSON.stringify(updatedScenarios));
+};
+
+const toggleCompareScenario = (scenario) => {
+  if (compareScenarios.some(s => s.id === scenario.id)) {
+    setCompareScenarios(prev => prev.filter(s => s.id !== scenario.id));
+  } else {
+    if (compareScenarios.length < 3) {
+      setCompareScenarios(prev => [...prev, scenario]);
+    } else {
+      alert("You can compare up to 3 scenarios at a time");
+    }
+  }
+};
+
+// Load saved scenarios on component mount
+useEffect(() => {
+  const savedScenarioData = localStorage.getItem('carbonCalculatorScenarios');
+  if (savedScenarioData) {
+    try {
+      setSavedScenarios(JSON.parse(savedScenarioData));
+    } catch (e) {
+      console.error("Error loading saved scenarios:", e);
+    }
+  }
+}, []);
+
+// Add this component for scenario comparison
+const ScenarioManager = () => {
+  return (
+    <div className="space-y-6">
+      <div className="bg-white p-4 rounded-lg shadow">
+        <h3 className="text-lg font-semibold mb-3">Scenario Manager</h3>
+        
+        <div className="flex items-center mb-4">
+          <input
+            type="text"
+            value={scenarioName}
+            onChange={(e) => setScenarioName(e.target.value)}
+            placeholder="Scenario Name"
+            className="flex-grow p-2 border rounded mr-2"
+          />
+          <button 
+            onClick={saveCurrentScenario}
+            className="px-4 py-2 bg-blue-600 text-white rounded"
+          >
+            Save Scenario
+          </button>
+        </div>
+        
+        {savedScenarios.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Space Heating</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Water Heating</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Combined Reduction</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {savedScenarios.map((scenario) => (
+                  <tr key={scenario.id}>
+                    <td className="px-4 py-2 whitespace-nowrap">{scenario.name}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      {formatNumber(scenario.results.spaceHeating.netEmissionsReduction)} MTCO2e/yr
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      {formatNumber(scenario.results.waterHeating.netEmissionsReduction)} MTCO2e/yr
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      {formatNumber(scenario.results.combined.netEmissionsReduction)} MTCO2e/yr
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => loadScenario(scenario)}
+                          className="px-2 py-1 bg-blue-600 text-white text-xs rounded"
+                        >
+                          Load
+                        </button>
+                        <button 
+                          onClick={() => toggleCompareScenario(scenario)}
+                          className={`px-2 py-1 text-white text-xs rounded ${
+                            compareScenarios.some(s => s.id === scenario.id) 
+                              ? 'bg-green-600' 
+                              : 'bg-gray-500'
+                          }`}
+                        >
+                          Compare
+                        </button>
+                        <button 
+                          onClick={() => deleteScenario(scenario.id)}
+                          className="px-2 py-1 bg-red-600 text-white text-xs rounded"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-gray-500 text-sm">No saved scenarios yet. Create your first one!</p>
+        )}
+      </div>
+      
+      {compareScenarios.length > 0 && (
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h3 className="text-lg font-semibold mb-3">Scenario Comparison</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h4 className="font-medium text-sm mb-2">Annual Emissions Reduction</h4>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={compareScenarios.map(s => ({
+                      name: s.name,
+                      spaceHeating: s.results.spaceHeating.netEmissionsReduction,
+                      waterHeating: s.results.waterHeating.netEmissionsReduction,
+                      combined: s.results.combined.netEmissionsReduction
+                    }))}
+                    margin={{ top: 5, right: 30, left: 20, bottom: 40 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="name" 
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis label={{ value: 'MTCO2e/year', angle: -90, position: 'insideLeft' }} />
+                    <Tooltip formatter={(value) => `${formatNumber(value, 2)} MTCO2e`} />
+                    <Legend />
+                    <Bar dataKey="spaceHeating" name="Space Heating" stackId="a" fill="#2563EB" />
+                    <Bar dataKey="waterHeating" name="Water Heating" stackId="a" fill="#10B981" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="font-medium text-sm mb-2">Payback Period</h4>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={compareScenarios.map(s => ({
+                      name: s.name,
+                      spaceHeating: s.results.spaceHeating.simplePaybackYears,
+                      waterHeating: s.results.waterHeating.simplePaybackYears,
+                      combined: s.results.combined.paybackPeriod
+                    }))}
+                    margin={{ top: 5, right: 30, left: 20, bottom: 40 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="name" 
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis label={{ value: 'Years', angle: -90, position: 'insideLeft' }} />
+                    <Tooltip formatter={(value) => `${formatNumber(value, 1)} years`} />
+                    <Legend />
+                    <Bar dataKey="spaceHeating" name="Space Heating" fill="#2563EB" />
+                    <Bar dataKey="waterHeating" name="Water Heating" fill="#10B981" />
+                    <Bar dataKey="combined" name="Combined" fill="#F97316" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Add these states to your component
+const [savedScenarios, setSavedScenarios] = useState([]);
+const [scenarioName, setScenarioName] = useState('');
+const [compareScenarios, setCompareScenarios] = useState([]);
+
+// Add these functions for scenario management
+const saveCurrentScenario = () => {
+  if (!scenarioName) {
+    alert("Please enter a name for this scenario");
+    return;
+  }
+  
+  const newScenario = {
+    id: Date.now(),
+    name: scenarioName,
+    inputs: JSON.parse(JSON.stringify(inputs)),
+    results: JSON.parse(JSON.stringify(results))
+  };
+  
+  setSavedScenarios(prev => [...prev, newScenario]);
+  setScenarioName('');
+  
+  // Save to localStorage
+  const allScenarios = [...savedScenarios, newScenario];
+  localStorage.setItem('carbonCalculatorScenarios', JSON.stringify(allScenarios));
+};
+
+const loadScenario = (scenario) => {
+  setInputs(JSON.parse(JSON.stringify(scenario.inputs)));
+};
+
+const deleteScenario = (id) => {
+  const updatedScenarios = savedScenarios.filter(s => s.id !== id);
+  setSavedScenarios(updatedScenarios);
+  localStorage.setItem('carbonCalculatorScenarios', JSON.stringify(updatedScenarios));
+};
+
+const toggleCompareScenario = (scenario) => {
+  if (compareScenarios.some(s => s.id === scenario.id)) {
+    setCompareScenarios(prev => prev.filter(s => s.id !== scenario.id));
+  } else {
+    if (compareScenarios.length < 3) {
+      setCompareScenarios(prev => [...prev, scenario]);
+    } else {
+      alert("You can compare up to 3 scenarios at a time");
+    }
+  }
+};
+
+// Load saved scenarios on component mount
+useEffect(() => {
+  const savedScenarioData = localStorage.getItem('carbonCalculatorScenarios');
+  if (savedScenarioData) {
+    try {
+      setSavedScenarios(JSON.parse(savedScenarioData));
+    } catch (e) {
+      console.error("Error loading saved scenarios:", e);
+    }
+  }
+}, []);
+
+// Add this component for scenario comparison
+const ScenarioManager = () => {
+  return (
+    <div className="space-y-6">
+      <div className="bg-white p-4 rounded-lg shadow">
+        <h3 className="text-lg font-semibold mb-3">Scenario Manager</h3>
+        
+        <div className="flex items-center mb-4">
+          <input
+            type="text"
+            value={scenarioName}
+            onChange={(e) => setScenarioName(e.target.value)}
+            placeholder="Scenario Name"
+            className="flex-grow p-2 border rounded mr-2"
+          />
+          <button 
+            onClick={saveCurrentScenario}
+            className="px-4 py-2 bg-blue-600 text-white rounded"
+          >
+            Save Scenario
+          </button>
+        </div>
+        
+        {savedScenarios.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Space Heating</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Water Heating</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Combined Reduction</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {savedScenarios.map((scenario) => (
+                  <tr key={scenario.id}>
+                    <td className="px-4 py-2 whitespace-nowrap">{scenario.name}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      {formatNumber(scenario.results.spaceHeating.netEmissionsReduction)} MTCO2e/yr
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      {formatNumber(scenario.results.waterHeating.netEmissionsReduction)} MTCO2e/yr
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      {formatNumber(scenario.results.combined.netEmissionsReduction)} MTCO2e/yr
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => loadScenario(scenario)}
+                          className="px-2 py-1 bg-blue-600 text-white text-xs rounded"
+                        >
+                          Load
+                        </button>
+                        <button 
+                          onClick={() => toggleCompareScenario(scenario)}
+                          className={`px-2 py-1 text-white text-xs rounded ${
+                            compareScenarios.some(s => s.id === scenario.id) 
+                              ? 'bg-green-600' 
+                              : 'bg-gray-500'
+                          }`}
+                        >
+                          Compare
+                        </button>
+                        <button 
+                          onClick={() => deleteScenario(scenario.id)}
+                          className="px-2 py-1 bg-red-600 text-white text-xs rounded"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-gray-500 text-sm">No saved scenarios yet. Create your first one!</p>
+        )}
+      </div>
+      
+      {compareScenarios.length > 0 && (
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h3 className="text-lg font-semibold mb-3">Scenario Comparison</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h4 className="font-medium text-sm mb-2">Annual Emissions Reduction</h4>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={compareScenarios.map(s => ({
+                      name: s.name,
+                      spaceHeating: s.results.spaceHeating.netEmissionsReduction,
+                      waterHeating: s.results.waterHeating.netEmissionsReduction,
+                      combined: s.results.combined.netEmissionsReduction
+                    }))}
+                    margin={{ top: 5, right: 30, left: 20, bottom: 40 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="name" 
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis label={{ value: 'MTCO2e/year', angle: -90, position: 'insideLeft' }} />
+                    <Tooltip formatter={(value) => `${formatNumber(value, 2)} MTCO2e`} />
+                    <Legend />
+                    <Bar dataKey="spaceHeating" name="Space Heating" stackId="a" fill="#2563EB" />
+                    <Bar dataKey="waterHeating" name="Water Heating" stackId="a" fill="#10B981" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="font-medium text-sm mb-2">Payback Period</h4>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={compareScenarios.map(s => ({
+                      name: s.name,
+                      spaceHeating: s.results.spaceHeating.simplePaybackYears,
+                      waterHeating: s.results.waterHeating.simplePaybackYears,
+                      combined: s.results.combined.paybackPeriod
+                    }))}
+                    margin={{ top: 5, right: 30, left: 20, bottom: 40 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="name" 
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis label={{ value: 'Years', angle: -90, position: 'insideLeft' }} />
+                    <Tooltip formatter={(value) => `${formatNumber(value, 1)} years`} />
+                    <Legend />
+                    <Bar dataKey="spaceHeating" name="Space Heating" fill="#2563EB" />
+                    <Bar dataKey="waterHeating" name="Water Heating" fill="#10B981" />
+                    <Bar dataKey="combined" name="Combined" fill="#F97316" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
   // Calculate results for a single technology (space heating or water heating)
   const calculateResults = (category, params) => {
     // Determine which percentage field to use based on category
@@ -1359,5 +2025,7 @@ const exportResults = () => {
     </div>
   );
 };
+
+
 
 export default CarbonIncentivesCalculator;
