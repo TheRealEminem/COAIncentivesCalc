@@ -126,7 +126,7 @@ const CarbonIncentivesCalculator = () => {
     const hpCostField = category === 'spaceHeating' ? 'heatPumpCost' : 'heatPumpWaterHeaterCost';
     
     const initialCostGas = params[systemCostField] + params.gasInstallationCost;
-    const initialCostHP = params[hpCostField] + params.heatPumpInstallationCost] - params.currentIncentive - params.federalTaxCredit;
+    const initialCostHP = params[hpCostField] + params.heatPumpInstallationCost - params.currentIncentive - params.federalTaxCredit;    
     
     // Calculate simple payback period
     const additionalCost = initialCostHP - initialCostGas;
