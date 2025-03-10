@@ -728,6 +728,8 @@ const CarbonIncentivesCalculator = () => {
               ))}
             </div>
           </div>
+          
+          <div className="col-span-2">
             <h4 className="font-medium text-sm mb-2">Financial Analysis</h4>
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
@@ -750,9 +752,9 @@ const CarbonIncentivesCalculator = () => {
                 <span>Payback with No Incentives:</span>
                 <span className="font-medium">{formatNumber(results.simplePaybackNoIncentive, 1)} years</span>
               </div>
-              </div>
             </div>
           </div>
+        </div>
       </div>
     );
   };
