@@ -753,7 +753,6 @@ const CarbonIncentivesCalculator = () => {
               </div>
             </div>
           </div>
-        </div>
       </div>
     );
   };
