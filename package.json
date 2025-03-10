@@ -4,3 +4,9 @@
   }
 }
 "homepage": "https://TheRealEminem.github.io/COAIncentivesCalc"
+
+"scripts": {
+  // other scripts...
+  "predeploy": "npm run build",
+  "deploy": "gh-pages -d build"
+}
